@@ -29,12 +29,11 @@ def send_message(chat_id, text, reply_markup=None):
         print(f"Send error: {e}")
 
 def ask_cloudflare_ai(question):
-    """Send question to Cloudflare's Llama 2 model."""
+    """Send question to Cloudflare's SeaLLM model (best for Burmese)."""
     if not CLOUDFLARE_API_KEY or not CLOUDFLARE_ACCOUNT_ID:
-        return "⚠️ AI ကို စနစ်ထည့်သွင်းထားခြင်း မရှိပါ။ Cloudflare API သော့များ ထည့်သွင်းပေးပါ။"
+        return "⚠️ AI ကို စနစ်ထည့်သွင်းထားခြင်း မရှိပါ။"
     
-    # Using Llama 2 - more reliable and well-tested
-    url = f"https://api.cloudflare.com/client/v4/accounts/{CLOUDFLARE_ACCOUNT_ID}/ai/run/@cf/ai4burmese/padauk"
+    url = f"https://api.cloudflare.com/client/v4/accounts/{CLOUDFLARE_ACCOUNT_ID}/ai/run/@cf/sea/seallm-13b-chat"
     
     headers = {
         "Authorization": f"Bearer {CLOUDFLARE_API_KEY}",
@@ -50,27 +49,22 @@ def ask_cloudflare_ai(question):
         response = requests.post(url, headers=headers, json=data, timeout=30)
         result = response.json()
         
-        # Print full response to Railway logs for debugging
-        print(f"Full Cloudflare Response: {result}")
+        print(f"SeaLLM Response: {result}")
         
-        # Check if request was successful
-        if result.get('success') == False:
-            error = result.get('errors', [{}])[0].get('message', 'Unknown error')
-            return f"⚠️ API အမှား: {error}"
+        if 'errors' in result and result['errors']:
+            error_msg = result['errors'][0].get('message', 'Unknown error')
+            return f"⚠️ API အမှား: {error_msg}"
         
-        # Extract the response text
         if 'result' in result:
-            if isinstance(result['result'], dict):
-                # Try common response keys
-                for key in ['response', 'text', 'answer', 'output']:
-                    if key in result['result']:
-                        return result['result'][key]
-                # If no key found, return the whole result as string
-                return str(result['result'])
+            if isinstance(result['result'], dict) and 'response' in result['result']:
+                return result['result']['response']
             elif isinstance(result['result'], str):
                 return result['result']
         
-        return "အဖြေရှာမတွေ့ပါ။ တုံ့ပြန်မှုပုံစံမှားနေပါသည်။"
+        if 'response' in result:
+            return result['response']
+        
+        return "အဖြေရှာမတွေ့ပါ။"
     
     except requests.exceptions.Timeout:
         return "⏰ AI အချိန်ကုန်သွားပါပြီ။ နောက်မှထပ်စမ်းပါ။"
@@ -82,7 +76,22 @@ def handle_message(chat_id, text):
     """Process user messages - check for show commands or AI questions."""
     user_text = text.lower().strip()
     
-    # Check 1: Exact match for show names (from your JSON)
+    # Check 1: AI question first (starts with ? or ai:)
+    if user_text.startswith('?') or user_text.startswith('ai:'):
+        question = user_text.replace('?', '').replace('ai:', '').strip()
+        
+        if question:
+            send_message(chat_id, "🤖 စဉ်းစားနေပါသည်...")
+            answer = ask_cloudflare_ai(question)
+            
+            if len(answer) > 4000:
+                answer = answer[:4000] + "..."
+            
+            # AI response ONLY - no buttons, no links
+            send_message(chat_id, f"🤖 <b>AI ၏ အဖြေ:</b>\n\n{answer}")
+            return True
+    
+    # Check 2: Exact match for show names (from your JSON)
     for cmd in COMMANDS:
         if user_text == cmd['command'].lower():
             # Build buttons from JSON
@@ -97,20 +106,6 @@ def handle_message(chat_id, text):
             send_message(chat_id, cmd['msg'], reply_markup)
             return True
     
-    # Check 2: AI question (starts with ? or ai:)
-    if user_text.startswith('?') or user_text.startswith('ai:'):
-        question = user_text.replace('?', '').replace('ai:', '').strip()
-        
-        if question:
-            send_message(chat_id, "🤖 စဉ်းစားနေပါသည်...")
-            answer = ask_cloudflare_ai(question)
-            
-            if len(answer) > 4000:
-                answer = answer[:4000] + "..."
-            
-            send_message(chat_id, f"🤖 <b>AI ၏ အဖြေ:</b>\n\n{answer}")
-            return True
-    
     return False
 
 def main():
@@ -120,7 +115,7 @@ def main():
     if CLOUDFLARE_API_KEY and CLOUDFLARE_ACCOUNT_ID:
         print("✅ AI စနစ် အသင့်ရှိပါသည်!")
     else:
-        print("⚠️ AI စနစ် မပါရှိပါ - API သော့များ ထည့်သွင်းရန် လိုအပ်သည်")
+        print("⚠️ AI စနစ် မပါရှိပါ")
     
     last_update_id = 0
     
@@ -146,6 +141,7 @@ def main():
                         text = msg['text']
                         
                         if text == '/start':
+                            # YOUR BURMESE WELCOME MESSAGE - No English!
                             send_message(
                                 chat_id,
                                 "🎬 <b>Animation by Asa ဘော့မှ ကြိုဆိုပါတယ်!</b>\n\n"
