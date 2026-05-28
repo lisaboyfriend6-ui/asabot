@@ -25,8 +25,9 @@ def save_subscribers(subscribers):
     with open(SUBSCRIBERS_FILE, 'w', encoding='utf-8') as f:
         json.dump(subscribers, f, ensure_ascii=False, indent=4)
 
-# Your Telegram ID for feedback
-YOUR_USER_ID = 5848609177
+# ⚠️ IMPORTANT: CHANGE THIS TO YOUR TELEGRAM USER ID! ⚠️
+# Get your ID from @userinfobot on Telegram
+YOUR_USER_ID = 5848609177  # <--- REPLACE THIS WITH YOUR ACTUAL ID!
 
 def send_message(chat_id, text, reply_markup=None):
     """Send a message to Telegram user/group."""
@@ -52,6 +53,7 @@ def forward_to_admin(chat_id, user_name, user_id, feedback_text):
     message += f"💬 <b>တုံ့ပြန်ချက်:</b>\n{feedback_text}"
     
     send_message(YOUR_USER_ID, message)
+    print(f"Feedback sent to admin ({YOUR_USER_ID}): {feedback_text}")  # Debug log
 
 def handle_message(chat_id, text, user_name, user_id):
     """Process user messages - check for show commands."""
@@ -72,6 +74,7 @@ def handle_message(chat_id, text, user_name, user_id):
     if user_text.startswith('/feedback'):
         feedback_msg = text.replace('/feedback', '').strip()
         if feedback_msg:
+            print(f"Feedback received from {user_name} ({user_id}): {feedback_msg}")  # Debug log
             forward_to_admin(chat_id, user_name, user_id, feedback_msg)
             send_message(
                 chat_id,
@@ -148,10 +151,12 @@ def handle_message(chat_id, text, user_name, user_id):
 def main():
     """Main bot loop - polls for messages."""
     print("🚀 ဘော့စတင်လည်ပတ်နေပါပြီ...")
+    print(f"✅ Feedback will be sent to admin ID: {YOUR_USER_ID}")
     print("✅ ရှိုးစာရင်းများ ပါဝင်သည်:", [cmd['command'] for cmd in COMMANDS])
     print(f"✅ စာရင်းသွင်းထားသူများ: {len(load_subscribers())}")
     
     last_update_id = 0
+    processed_updates = set()
     
     while True:
         try:
@@ -165,7 +170,16 @@ def main():
             data = response.json()
             
             for update in data.get('result', []):
-                last_update_id = update['update_id']
+                update_id = update['update_id']
+                
+                if update_id in processed_updates:
+                    continue
+                processed_updates.add(update_id)
+                
+                if len(processed_updates) > 1000:
+                    processed_updates = set(list(processed_updates)[-500:])
+                
+                last_update_id = update_id
                 
                 if 'message' in update:
                     msg = update['message']
