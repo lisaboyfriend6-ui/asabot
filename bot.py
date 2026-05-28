@@ -6,9 +6,27 @@ import time
 # Environment variables
 TOKEN = os.environ.get('BOT_TOKEN')
 
+# File to store subscribed users
+SUBSCRIBERS_FILE = 'subscribers.json'
+
 # Load your show commands
 with open('quick_reply.json', 'r', encoding='utf-8') as f:
     COMMANDS = json.load(f)
+
+# Load subscribers
+def load_subscribers():
+    if os.path.exists(SUBSCRIBERS_FILE):
+        with open(SUBSCRIBERS_FILE, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    return []
+
+# Save subscribers
+def save_subscribers(subscribers):
+    with open(SUBSCRIBERS_FILE, 'w', encoding='utf-8') as f:
+        json.dump(subscribers, f, ensure_ascii=False, indent=4)
+
+# Your Telegram ID for feedback (replace with your actual ID)
+YOUR_USER_ID = 530586633  # Change this to your Telegram user ID!
 
 def send_message(chat_id, text, reply_markup=None):
     """Send a message to Telegram user/group."""
@@ -26,9 +44,90 @@ def send_message(chat_id, text, reply_markup=None):
     except Exception as e:
         print(f"Send error: {e}")
 
-def handle_message(chat_id, text):
+def forward_to_admin(chat_id, user_name, user_id, feedback_text):
+    """Forward feedback to bot admin."""
+    message = f"📝 <b>တုံ့ပြန်ချက်အသစ်</b>\n\n"
+    message += f"👤 <b>အသုံးပြုသူ:</b> {user_name}\n"
+    message += f"🆔 <b>User ID:</b> <code>{user_id}</code>\n"
+    message += f"💬 <b>တုံ့ပြန်ချက်:</b>\n{feedback_text}"
+    
+    send_message(YOUR_USER_ID, message)
+
+def handle_message(chat_id, text, user_name, user_id):
     """Process user messages - check for show commands."""
     user_text = text.lower().strip()
+    
+    # Command: /list (စာရင်းကြည့်ရန်)
+    if user_text == '/list':
+        show_list = "\n".join([f"• {cmd['command']}" for cmd in COMMANDS])
+        send_message(
+            chat_id,
+            f"📺 <b>ရရှိနိုင်တဲ့ စီးရီးများ:</b>\n\n{show_list}\n\n"
+            f"စီးရီးအမည်ကို ရိုက်ထည့်လိုက်ရုံနဲ့ လင့်ခ်ရယူလို့ရပါတယ်။\n"
+            f"ဥပမာ: <code>rick and morty</code>"
+        )
+        return True
+    
+    # Command: /feedback (တုံ့ပြန်ချက်ပေးရန်)
+    if user_text.startswith('/feedback'):
+        feedback_msg = text.replace('/feedback', '').strip()
+        if feedback_msg:
+            forward_to_admin(chat_id, user_name, user_id, feedback_msg)
+            send_message(
+                chat_id,
+                "✅ <b>ကျေးဇူးတင်ပါတယ်!</b>\n\n"
+                "သင့်ရဲ့ တုံ့ပြန်ချက်ကို အက်မင်ထံ ပေးပို့ပြီးပါပြီ။\n"
+                "အမြန်ဆုံး ပြန်လည် ဖြေကြားပါမည်။"
+            )
+        else:
+            send_message(
+                chat_id,
+                "📝 <b>/feedback အသုံးပြုနည်း</b>\n\n"
+                "တုံ့ပြန်ချက်ပေးရန် အောက်ပါအတိုင်း ရိုက်ထည့်ပါ:\n"
+                "<code>/feedback သင့်ရဲ့ တုံ့ပြန်ချက်</code>\n\n"
+                "ဥပမာ: <code>/feedback ရစ်ခ်နှင့်မော်တီ လင့်ခ်အလုပ်မလုပ်ပါ</code>"
+            )
+        return True
+    
+    # Command: /notify (သတင်းအကြောင်းကြားခံယူရန်)
+    if user_text == '/notify':
+        subscribers = load_subscribers()
+        if user_id in subscribers:
+            send_message(
+                chat_id,
+                "🔔 <b>သင်သည် သတင်းအကြောင်းကြားချက် ရရှိပြီးသားဖြစ်ပါသည်။</b>\n\n"
+                "စီးရီးအသစ်များ ထပ်တိုးတိုင်း အကြောင်းကြားချက် ပို့ပေးပါမည်။\n"
+                "ရပ်တန့်လိုပါက <code>/unnotify</code> ကိုရိုက်ထည့်ပါ။"
+            )
+        else:
+            subscribers.append(user_id)
+            save_subscribers(subscribers)
+            send_message(
+                chat_id,
+                "🔔 <b>သတင်းအကြောင်းကြားချက် စာရင်းသွင်းပြီးပါပြီ!</b>\n\n"
+                "စီးရီးအသစ်များ ထပ်တိုးတိုင်း အကြောင်းကြားချက် ပို့ပေးပါမည်။\n"
+                "ရပ်တန့်လိုပါက <code>/unnotify</code> ကိုရိုက်ထည့်ပါ။"
+            )
+        return True
+    
+    # Command: /unnotify (သတင်းအကြောင်းကြားချက် ရပ်ရန်)
+    if user_text == '/unnotify':
+        subscribers = load_subscribers()
+        if user_id in subscribers:
+            subscribers.remove(user_id)
+            save_subscribers(subscribers)
+            send_message(
+                chat_id,
+                "🔕 <b>သတင်းအကြောင်းကြားချက် စာရင်းမှ ဖယ်ရှားပြီးပါပြီ။</b>\n\n"
+                "နောက်မှ ပြန်လည် စာရင်းသွင်းလိုပါက <code>/notify</code> ကိုရိုက်ထည့်ပါ။"
+            )
+        else:
+            send_message(
+                chat_id,
+                "❓ <b>သင်သည် သတင်းအကြောင်းကြားချက် စာရင်းတွင် မပါရှိပါ။</b>\n\n"
+                "စာရင်းသွင်းရန် <code>/notify</code> ကိုရိုက်ထည့်ပါ။"
+            )
+        return True
     
     # Check for exact match in show names
     for cmd in COMMANDS:
@@ -47,10 +146,21 @@ def handle_message(chat_id, text):
     
     return False
 
+def broadcast_to_subscribers(message):
+    """Send message to all subscribed users."""
+    subscribers = load_subscribers()
+    for user_id in subscribers:
+        try:
+            send_message(user_id, message)
+            time.sleep(0.5)  # Avoid hitting rate limits
+        except Exception as e:
+            print(f"Failed to send to {user_id}: {e}")
+
 def main():
     """Main bot loop - polls for messages."""
     print("🚀 ဘော့စတင်လည်ပတ်နေပါပြီ...")
     print("✅ ရှိုးစာရင်းများ ပါဝင်သည်:", [cmd['command'] for cmd in COMMANDS])
+    print(f"✅ စာရင်းသွင်းထားသူများ: {len(load_subscribers())}")
     
     last_update_id = 0
     
@@ -71,6 +181,8 @@ def main():
                 if 'message' in update:
                     msg = update['message']
                     chat_id = msg['chat']['id']
+                    user_id = msg['from']['id']
+                    user_name = msg['from'].get('first_name', 'Unknown')
                     
                     if 'text' in msg:
                         text = msg['text']
@@ -79,24 +191,24 @@ def main():
                             send_message(
                                 chat_id,
                                 "🎬 <b>Animation by Asa ဘော့မှ ကြိုဆိုပါတယ်!</b>\n\n"
+                                "📺 <b>ရရှိနိုင်တဲ့ Command များ:</b>\n\n"
+                                "• <code>/list</code> - စီးရီးအားလုံးကို ကြည့်ရန်\n"
+                                "• <code>/feedback &lt;မက်ဆေ့ချ်&gt;</code> - တုံ့ပြန်ချက်ပေးရန်\n"
+                                "• <code>/notify</code> - သတင်းအကြောင်းကြားချက် ရယူရန်\n"
+                                "• <code>/unnotify</code> - သတင်းအကြောင်းကြားချက် ရပ်ရန်\n\n"
+                                "🎬 <b>စီးရီးကြည့်ရန်:</b>\n"
                                 "စီးရီးအမည်ကို ရိုက်ထည့်လိုက်ရုံနဲ့ လင့်ခ်ရယူလို့ရပါတယ်။\n"
                                 "ဥပမာ: <code>rick and morty</code>\n\n"
-                                "ရရှိနိုင်တဲ့ စီးရီးများ:\n"
-                                "• rick and morty\n"
-                                "• Pantheon\n"
-                                "• Primal\n"
-                                "• Adventure time\n"
-                                "• Bojack Horseman\n"
-                                "• နောက်ထပ်များစွာ..."
+                                "💡 AI ကို မြန်မာလို မေးမြန်းနိုင်ပါတယ်။"
                             )
                         else:
-                            handled = handle_message(chat_id, text)
+                            handled = handle_message(chat_id, text, user_name, user_id)
                             if not handled:
                                 send_message(
                                     chat_id,
-                                    "❓ ဒီအမည်ရှိ ရုပ်ရှင်ကို ရှာမတွေ့ပါ။\n\n"
-                                    "စီးရီးအမည်ကို အတိအကျ ရိုက်ထည့်ပေးပါ။\n"
-                                    "ဥပမာ: <code>rick and morty</code>"
+                                    "❓ <b>ဒီအမည်ရှိ ရုပ်ရှင်ကို ရှာမတွေ့ပါ။</b>\n\n"
+                                    "<code>/list</code> ကိုရိုက်ထည့်ပြီး ရရှိနိုင်တဲ့ စီးရီးများကို ကြည့်ရှုနိုင်ပါတယ်။\n\n"
+                                    "အကူအညီလိုပါက <code>/feedback</code> ဖြင့် ဆက်သွယ်နိုင်ပါတယ်။"
                                 )
             
             time.sleep(1)
