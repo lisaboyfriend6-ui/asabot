@@ -2,6 +2,7 @@ import json
 import os
 import requests
 import time
+from collections import defaultdict
 
 TOKEN = os.environ.get('BOT_TOKEN')
 SUBSCRIBERS_FILE = 'subscribers.json'
@@ -20,6 +21,9 @@ def save_subscribers(subscribers):
         json.dump(subscribers, f, ensure_ascii=False, indent=4)
 
 YOUR_USER_ID = 5848609177  # CHANGE TO YOUR ID
+
+# Cooldown tracker to prevent duplicate responses
+last_user_message_time = defaultdict(float)
 
 def send_message(chat_id, text, reply_markup=None):
     url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
@@ -51,7 +55,7 @@ def handle_message(chat_id, text, user_name, user_id):
             forward_to_admin(chat_id, user_name, user_id, feedback_msg)
             send_message(chat_id, "✅ <b>ကျေးဇူးတင်ပါတယ်!</b>\n\nသင့်ရဲ့ တုံ့ပြန်ချက်ကို အက်မင်ထံ ပေးပို့ပြီးပါပြီ။")
         else:
-            send_message(chat_id, "📝 <b>/feedback အသုံးပြုနည်း</b>\n\n<code>/feedback သင့်ရဲ့ တုံ့ပြန်ချက်</code>\n\nဥပမာ: <code>/feedback လင့်ခ်အလုပ်မလုပ်ပါ</code>")
+            send_message(chat_id, "📝 <b>/feedback အသုံးပြုနည်း</b>\n\n<code>/feedback သင့်ရဲ့ တုံ့ပြန်ချက်</code>")
         return True
     
     # /notify command
@@ -62,7 +66,7 @@ def handle_message(chat_id, text, user_name, user_id):
         else:
             subscribers.append(user_id)
             save_subscribers(subscribers)
-            send_message(chat_id, "🔔 <b>သတင်းအကြောင်းကြားချက် စာရင်းသွင်းပြီးပါပြီ။</b>\n\nစီးရီးအသစ်များ ထပ်တိုးတိုင်း အကြောင်းကြားချက် ပို့ပေးပါမည်။")
+            send_message(chat_id, "🔔 <b>သတင်းအကြောင်းကြားချက် စာရင်းသွင်းပြီးပါပြီ။</b>")
         return True
     
     # /unnotify command
@@ -121,8 +125,14 @@ def main():
                     if 'text' in msg:
                         text = msg['text']
                         
+                        # COOLDOWN CHECK - Prevent duplicate processing
+                        current_time = time.time()
+                        last_time = last_user_message_time.get(f"{chat_id}_{user_id}", 0)
+                        if current_time - last_time < 1.5:
+                            continue  # Skip if same user sent message less than 1.5 seconds ago
+                        last_user_message_time[f"{chat_id}_{user_id}"] = current_time
+                        
                         if text == '/start':
-                            # BURMESE WELCOME WITH ALL COMMANDS
                             welcome_msg = (
                                 "🎬 <b>Animation by Asa ဘော့မှ ကြိုဆိုပါတယ်!</b>\n\n"
                                 "📺 <b>အသုံးပြုနိုင်တဲ့ Command များ:</b>\n\n"
