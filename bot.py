@@ -31,7 +31,7 @@ def send_message(chat_id, text, reply_markup=None):
 def ask_cloudflare_ai(question):
     """Send question to Cloudflare's Burmese-supported AI model."""
     if not CLOUDFLARE_API_KEY or not CLOUDFLARE_ACCOUNT_ID:
-        return "⚠️ AI is not configured. Please add Cloudflare API keys."
+        return "⚠️ AI ကို စနစ်ထည့်သွင်းထားခြင်း မရှိပါ။ Cloudflare API သော့များ ထည့်သွင်းပေးပါ။"
     
     # Using Gemma SEA-Lion - supports Burmese!
     url = f"https://api.cloudflare.com/client/v4/accounts/{CLOUDFLARE_ACCOUNT_ID}/ai/run/@cf/aisingapore/gemma-sea-lion-v4-27b-it"
@@ -50,16 +50,35 @@ def ask_cloudflare_ai(question):
         response = requests.post(url, headers=headers, json=data, timeout=30)
         result = response.json()
         
-        if 'errors' in result and result['errors']:
-            return f"AI Error: {result['errors'][0].get('message', 'Unknown error')}"
+        # Debug: print to Railway logs
+        print(f"Cloudflare Response: {result}")
         
-        return result.get('result', {}).get('response', "Sorry, I couldn't answer that.")
+        # Check for errors
+        if 'errors' in result and result['errors']:
+            error_msg = result['errors'][0].get('message', 'Unknown error')
+            return f"⚠️ API အမှား: {error_msg}"
+        
+        # Try multiple response paths
+        if 'result' in result:
+            if isinstance(result['result'], dict) and 'response' in result['result']:
+                return result['result']['response']
+            elif isinstance(result['result'], str):
+                return result['result']
+        
+        if 'response' in result:
+            return result['response']
+        
+        if 'result' in result and isinstance(result['result'], dict) and 'text' in result['result']:
+            return result['result']['text']
+        
+        print(f"Unexpected response format: {result.keys() if isinstance(result, dict) else 'not a dict'}")
+        return "ဝမ်းနည်းပါတယ်၊ ကျွန်ုပ် အဖြေမပေးနိုင်ပါ။ AI တုံ့ပြန်မှုပုံစံ မမှန်ကန်ပါ။"
     
     except requests.exceptions.Timeout:
-        return "⏰ AI service timed out. Please try again."
+        return "⏰ AI ဝန်ဆောင်မှု အချိန်ကုန်သွားပါပြီ။ ကျေးဇူးပြု၍ နောက်မှ ထပ်စမ်းကြည့်ပါ။"
     except Exception as e:
         print(f"AI Error: {e}")
-        return "🤖 AI service temporarily unavailable. Please try again later."
+        return "🤖 AI ဝန်ဆောင်မှု ယာယီရနိုင်မှု မရှိပါ။ နောက်မှ ထပ်ကြိုးစားကြည့်ပါ။"
 
 def handle_message(chat_id, text):
     """Process user messages - check for show commands or AI questions."""
@@ -85,22 +104,22 @@ def handle_message(chat_id, text):
         question = user_text.replace('?', '').replace('ai:', '').strip()
         
         if question:
-            send_message(chat_id, "🤖 စဥ်းစားနေပါသည်။...")
+            send_message(chat_id, "🤖 စဉ်းစားနေပါသည်...")
             answer = ask_cloudflare_ai(question)
             
             if len(answer) > 4000:
                 answer = answer[:4000] + "..."
             
-            send_message(chat_id, f"🤖 <b>Ai ၏ တုံ့ပြန်ချက်:</b>\n\n{answer}")
+            send_message(chat_id, f"🤖 <b>AI ၏ အဖြေ:</b>\n\n{answer}")
             return True
     
     return False
 
 def main():
     """Main bot loop - polls for messages."""
-    print("🚀 Bot is running...")
-    print("✅ Show commands loaded:", [cmd['command'] for cmd in COMMANDS])
-    print("✅ AI is enabled!" if CLOUDFLARE_API_KEY else "⚠️ AI not configured")
+    print("🚀 ဘော့စတင်လည်ပတ်နေပါပြီ...")
+    print("✅ ရှိုးစာရင်းများ ပါဝင်သည်:", [cmd['command'] for cmd in COMMANDS])
+    print("✅ AI စနစ် အသင့်ရှိပါသည်!" if CLOUDFLARE_API_KEY else "⚠️ AI စနစ် မပါရှိပါ")
     
     last_update_id = 0
     
@@ -128,20 +147,21 @@ def main():
                         if text == '/start':
                             send_message(
                                 chat_id,
-                                "🎬 <b>Animation by Asa ရဲ့ Bot လေးကနေကြိုဆိုလိုက်ပါမယ်!</b>\n\n"
-                                "ကြိုက်နှစ်သက်ရာ စီးရီးများကို စာရိုက်လိုက်ရုံနဲ့ ကြည့်ရှုနိုင်ပါပြီ ၊ ဥပမာ ၊ <code>rick and morty</code> ၊ လင့်ကို ရယူပါ။\n\n"
-                                "🤖 <b>AI လက်ထောက်:</b> ဒီပုံစံအတိုင်း ? ကို ရှေ့မှားထားပီးမေးပေးပါ။ <code>? မေးခွန်း</code>\n"
-                                "ဥပမာ: <code>? Rick and Morty ဆိုတာဘာလဲ?</code>\n\n"
-                                "💡 AI ကို မြန်မာလို ပြောလည်းရပါတယ်!"
+                                "🎬 <b>Animation by Asa ဘော့မှ ကြိုဆိုပါတယ်!</b>\n\n"
+                                "စီးရီးအမည်ကို ရိုက်ထည့်လိုက်ရုံနဲ့ လင့်ခ်ရယူလို့ရပါတယ်။\n"
+                                "ဥပမာ: <code>rick and morty</code>\n\n"
+                                "🤖 <b>AI အကူအညီ:</b> မေးခွန်းရဲ့ရှေ့မှာ <code>?</code> ထည့်ပြီးမေးမြန်းနိုင်ပါတယ်။\n"
+                                "ဥပမာ: <code>? Rick and Morty ဆိုတာဘာလဲ</code>\n\n"
+                                "💡 AI ကို မြန်မာလို မေးမြန်းနိုင်ပါတယ်။"
                             )
                         else:
                             handled = handle_message(chat_id, text)
                             if not handled:
                                 send_message(
                                     chat_id,
-                                    "❓ ဒီအမည်ရှိ ရုပ်ရှင်ကို ရှာမတွေ့ပါဗျာ။\n\n"
-                                    "Type <code>? your question</code> to ask the AI assistant!\n"
-                                    "Example: <code>? what is Rick and Morty about?</code>"
+                                    "❓ ဒီအမည်ရှိ ရုပ်ရှင်ကို ရှာမတွေ့ပါ။\n\n"
+                                    "AI ကို <code>? မေးခွန်း</code> ပုံစံဖြင့် မေးမြန်းနိုင်ပါတယ်။\n"
+                                    "ဥပမာ: <code>? Rick and Morty ဆိုတာဘာလဲ</code>"
                                 )
             
             time.sleep(1)
