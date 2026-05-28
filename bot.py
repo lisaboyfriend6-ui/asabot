@@ -25,8 +25,8 @@ def save_subscribers(subscribers):
     with open(SUBSCRIBERS_FILE, 'w', encoding='utf-8') as f:
         json.dump(subscribers, f, ensure_ascii=False, indent=4)
 
-# Your Telegram ID for feedback (replace with your actual ID)
-YOUR_USER_ID = 530586633  # Change this to your Telegram user ID!
+# Your Telegram ID for feedback
+YOUR_USER_ID = 5848609177
 
 def send_message(chat_id, text, reply_markup=None):
     """Send a message to Telegram user/group."""
@@ -57,7 +57,7 @@ def handle_message(chat_id, text, user_name, user_id):
     """Process user messages - check for show commands."""
     user_text = text.lower().strip()
     
-    # Command: /list (စာရင်းကြည့်ရန်)
+    # Command: /list
     if user_text == '/list':
         show_list = "\n".join([f"• {cmd['command']}" for cmd in COMMANDS])
         send_message(
@@ -68,7 +68,7 @@ def handle_message(chat_id, text, user_name, user_id):
         )
         return True
     
-    # Command: /feedback (တုံ့ပြန်ချက်ပေးရန်)
+    # Command: /feedback
     if user_text.startswith('/feedback'):
         feedback_msg = text.replace('/feedback', '').strip()
         if feedback_msg:
@@ -89,7 +89,7 @@ def handle_message(chat_id, text, user_name, user_id):
             )
         return True
     
-    # Command: /notify (သတင်းအကြောင်းကြားခံယူရန်)
+    # Command: /notify
     if user_text == '/notify':
         subscribers = load_subscribers()
         if user_id in subscribers:
@@ -110,7 +110,7 @@ def handle_message(chat_id, text, user_name, user_id):
             )
         return True
     
-    # Command: /unnotify (သတင်းအကြောင်းကြားချက် ရပ်ရန်)
+    # Command: /unnotify
     if user_text == '/unnotify':
         subscribers = load_subscribers()
         if user_id in subscribers:
@@ -132,7 +132,6 @@ def handle_message(chat_id, text, user_name, user_id):
     # Check for exact match in show names
     for cmd in COMMANDS:
         if user_text == cmd['command'].lower():
-            # Build buttons from JSON
             buttons = []
             for row in cmd.get('buttons', []):
                 button_row = []
@@ -145,16 +144,6 @@ def handle_message(chat_id, text, user_name, user_id):
             return True
     
     return False
-
-def broadcast_to_subscribers(message):
-    """Send message to all subscribed users."""
-    subscribers = load_subscribers()
-    for user_id in subscribers:
-        try:
-            send_message(user_id, message)
-            time.sleep(0.5)  # Avoid hitting rate limits
-        except Exception as e:
-            print(f"Failed to send to {user_id}: {e}")
 
 def main():
     """Main bot loop - polls for messages."""
@@ -198,8 +187,7 @@ def main():
                                 "• <code>/unnotify</code> - သတင်းအကြောင်းကြားချက် ရပ်ရန်\n\n"
                                 "🎬 <b>စီးရီးကြည့်ရန်:</b>\n"
                                 "စီးရီးအမည်ကို ရိုက်ထည့်လိုက်ရုံနဲ့ လင့်ခ်ရယူလို့ရပါတယ်။\n"
-                                "ဥပမာ: <code>rick and morty</code>\n\n"
-                                "💡 AI ကို မြန်မာလို မေးမြန်းနိုင်ပါတယ်။"
+                                "ဥပမာ: <code>rick and morty</code>"
                             )
                         else:
                             handled = handle_message(chat_id, text, user_name, user_id)
