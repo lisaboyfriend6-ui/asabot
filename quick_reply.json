@@ -102,20 +102,6 @@
         ]
     },
     {
-        "command": "Scavengers Reign",
-        "title": "Paid",
-        "msg": "Scavengers Reign ကို အစအဆုံး ဝယ်ယူကြည့်လို့ရပြီဗျာ!",
-        "type": "text",
-        "buttons": [
-            [
-                {
-                    "text": "ရာသီ ၁ ကို ဝယ်ယူရန်။",
-                    "url": "https://t.me/animationbyasa/681"
-                }
-            ]
-        ]
-    },
-    {
         "command": "The big lez show",
         "title": "Free",
         "msg": "The big lez show ကို အစအဆုံး ကြည့်လို့ရပြီဗျာ!",
@@ -139,20 +125,6 @@
                 {
                     "text": "ရာသီ ၁ ကနေ ၃ အထိကို ကြည့်ရန်။",
                     "url": "https://t.me/animationbyasa/676"
-                }
-            ]
-        ]
-    },
-    {
-        "command": "Over the garden wall",
-        "title": "Paid",
-        "msg": "Over the garden wall ကို အစအဆုံး ဝယ်ယူကြည့်လို့ရပြီဗျာ!",
-        "type": "text",
-        "buttons": [
-            [
-                {
-                    "text": "ရာသီ ၁ ကို ဝယ်ယူရန်။",
-                    "url": "https://t.me/animationbyasa/997"
                 }
             ]
         ]
@@ -254,7 +226,7 @@
                 }
             ]
         ]
-    }
+    },
     {
         "command": "about",
         "title": "about",
