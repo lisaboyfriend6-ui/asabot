@@ -255,4 +255,18 @@
             ]
         ]
     }
+    {
+        "command": "about",
+        "title": "about",
+        "msg": "ကျွန်တော်ဟာ Animation by Asa ရဲ့ Bot ပဲ ဖြစ်ပါတယ်။။",
+        "type": "text",
+        "buttons": [
+            [
+                {
+                    "text": "အက်မင်ကို ဆက်သွယ်ရန်။",
+                    "url": "https://t.me/Vivan_Saikyo"
+                }
+            ]
+        ]
+    }
 ]
