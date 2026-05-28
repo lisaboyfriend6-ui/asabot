@@ -1,4 +1,4 @@
-[
+@[
     {
         "command": "rick and morty",
         "title": "Free",
@@ -53,7 +53,7 @@
         "buttons": [
             [
                 {
-                    "text": "ရာသီ ၁ နဲ့ ၂ ကို ဝယ်ယူရန်။",
+                    "text": "ရာသီ အစအဆုံး ကို ဝယ်ယူရန်။",
                     "url": "https://t.me/animationbyasa/1027"
                 }
             ]
