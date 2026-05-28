@@ -29,7 +29,7 @@ def send_message(chat_id, text, reply_markup=None):
         print(f"Send error: {e}")
 
 def ask_cloudflare_ai(question):
-    """Send question to Cloudflare's SeaLLM model (best for Burmese)."""
+    """Send question to Cloudflare's Llama 3 model - forces Burmese response."""
     if not CLOUDFLARE_API_KEY or not CLOUDFLARE_ACCOUNT_ID:
         return "⚠️ AI ကို စနစ်ထည့်သွင်းထားခြင်း မရှိပါ။"
     
@@ -40,16 +40,24 @@ def ask_cloudflare_ai(question):
         "Content-Type": "application/json"
     }
     
+    # Force Burmese response with instruction
+    prompt_with_instruction = f"""ကျေးဇူးပြု၍ မြန်မာလိုဖြေပါ။ အင်္ဂလိပ်လုံးဝမသုံးပါနဲ့။
+
+မေးခွန်း: {question}
+
+မြန်မာလိုအဖြေ:"""
+    
     data = {
-        "prompt": question,
-        "max_tokens": 500
+        "prompt": prompt_with_instruction,
+        "max_tokens": 500,
+        "temperature": 0.5
     }
     
     try:
         response = requests.post(url, headers=headers, json=data, timeout=30)
         result = response.json()
         
-        print(f"SeaLLM Response: {result}")
+        print(f"Llama 3 Response: {result}")
         
         if 'errors' in result and result['errors']:
             error_msg = result['errors'][0].get('message', 'Unknown error')
@@ -57,14 +65,17 @@ def ask_cloudflare_ai(question):
         
         if 'result' in result:
             if isinstance(result['result'], dict) and 'response' in result['result']:
-                return result['result']['response']
+                answer = result['result']['response']
             elif isinstance(result['result'], str):
-                return result['result']
+                answer = result['result']
+            else:
+                answer = str(result['result'])
+        elif 'response' in result:
+            answer = result['response']
+        else:
+            return "အဖြေရှာမတွေ့ပါ။"
         
-        if 'response' in result:
-            return result['response']
-        
-        return "အဖြေရှာမတွေ့ပါ။"
+        return answer
     
     except requests.exceptions.Timeout:
         return "⏰ AI အချိန်ကုန်သွားပါပြီ။ နောက်မှထပ်စမ်းပါ။"
@@ -141,7 +152,7 @@ def main():
                         text = msg['text']
                         
                         if text == '/start':
-                            # YOUR BURMESE WELCOME MESSAGE - No English!
+                            # PURE BURMESE WELCOME - NO ENGLISH
                             send_message(
                                 chat_id,
                                 "🎬 <b>Animation by Asa ဘော့မှ ကြိုဆိုပါတယ်!</b>\n\n"
