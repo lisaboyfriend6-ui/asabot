@@ -139,5 +139,16 @@ def main():
                             if not handled:
                                 send_message(
                                     chat_id,
-                                    "❓ ဒီအမည်နဲ့ ရုပ်ရှင်ကို ရှာမတွေ့ပါဗျာ။\n\n"
+                                    "❓ ဒီအမည်ရှိ ရုပ်ရှင်ကို ရှာမတွေ့ပါဗျာ။\n\n"
                                     "Type <code>? your question</code> to ask the AI assistant!\n"
+                                    "Example: <code>? what is Rick and Morty about?</code>"
+                                )
+            
+            time.sleep(1)
+            
+        except Exception as e:
+            print(f"Main loop error: {e}")
+            time.sleep(5)
+
+if __name__ == '__main__':
+    main()
