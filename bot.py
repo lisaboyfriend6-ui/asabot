@@ -33,7 +33,7 @@ def ask_cloudflare_ai(question):
     if not CLOUDFLARE_API_KEY or not CLOUDFLARE_ACCOUNT_ID:
         return "⚠️ AI ကို စနစ်ထည့်သွင်းထားခြင်း မရှိပါ။"
     
-    url = f"https://api.cloudflare.com/client/v4/accounts/{CLOUDFLARE_ACCOUNT_ID}/ai/run/@cf/sea/seallm-13b-chat"
+    url = f"https://api.cloudflare.com/client/v4/accounts/{CLOUDFLARE_ACCOUNT_ID}/ai/run/@cf/meta/llama-3-8b-instruct"
     
     headers = {
         "Authorization": f"Bearer {CLOUDFLARE_API_KEY}",
