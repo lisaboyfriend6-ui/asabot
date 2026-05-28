@@ -34,7 +34,7 @@ def ask_cloudflare_ai(question):
         return "⚠️ AI ကို စနစ်ထည့်သွင်းထားခြင်း မရှိပါ။ Cloudflare API သော့များ ထည့်သွင်းပေးပါ။"
     
     # Using Llama 2 - more reliable and well-tested
-    url = f"https://api.cloudflare.com/client/v4/accounts/{CLOUDFLARE_ACCOUNT_ID}/ai/run/@cf/meta/llama-2-7b-chat-int8"
+    url = f"https://api.cloudflare.com/client/v4/accounts/{CLOUDFLARE_ACCOUNT_ID}/ai/run/@cf/ai4burmese/padauk"
     
     headers = {
         "Authorization": f"Bearer {CLOUDFLARE_API_KEY}",
