@@ -29,12 +29,12 @@ def send_message(chat_id, text, reply_markup=None):
         print(f"Send error: {e}")
 
 def ask_cloudflare_ai(question):
-    """Send question to Cloudflare's Burmese-supported AI model."""
+    """Send question to Cloudflare's Llama 2 model."""
     if not CLOUDFLARE_API_KEY or not CLOUDFLARE_ACCOUNT_ID:
         return "⚠️ AI ကို စနစ်ထည့်သွင်းထားခြင်း မရှိပါ။ Cloudflare API သော့များ ထည့်သွင်းပေးပါ။"
     
-    # Using Gemma SEA-Lion - supports Burmese!
-    url = f"https://api.cloudflare.com/client/v4/accounts/{CLOUDFLARE_ACCOUNT_ID}/ai/run/@cf/aisingapore/gemma-sea-lion-v4-27b-it"
+    # Using Llama 2 - more reliable and well-tested
+    url = f"https://api.cloudflare.com/client/v4/accounts/{CLOUDFLARE_ACCOUNT_ID}/ai/run/@cf/meta/llama-2-7b-chat-int8"
     
     headers = {
         "Authorization": f"Bearer {CLOUDFLARE_API_KEY}",
@@ -50,35 +50,33 @@ def ask_cloudflare_ai(question):
         response = requests.post(url, headers=headers, json=data, timeout=30)
         result = response.json()
         
-        # Debug: print to Railway logs
-        print(f"Cloudflare Response: {result}")
+        # Print full response to Railway logs for debugging
+        print(f"Full Cloudflare Response: {result}")
         
-        # Check for errors
-        if 'errors' in result and result['errors']:
-            error_msg = result['errors'][0].get('message', 'Unknown error')
-            return f"⚠️ API အမှား: {error_msg}"
+        # Check if request was successful
+        if result.get('success') == False:
+            error = result.get('errors', [{}])[0].get('message', 'Unknown error')
+            return f"⚠️ API အမှား: {error}"
         
-        # Try multiple response paths
+        # Extract the response text
         if 'result' in result:
-            if isinstance(result['result'], dict) and 'response' in result['result']:
-                return result['result']['response']
+            if isinstance(result['result'], dict):
+                # Try common response keys
+                for key in ['response', 'text', 'answer', 'output']:
+                    if key in result['result']:
+                        return result['result'][key]
+                # If no key found, return the whole result as string
+                return str(result['result'])
             elif isinstance(result['result'], str):
                 return result['result']
         
-        if 'response' in result:
-            return result['response']
-        
-        if 'result' in result and isinstance(result['result'], dict) and 'text' in result['result']:
-            return result['result']['text']
-        
-        print(f"Unexpected response format: {result.keys() if isinstance(result, dict) else 'not a dict'}")
-        return "ဝမ်းနည်းပါတယ်၊ ကျွန်ုပ် အဖြေမပေးနိုင်ပါ။ AI တုံ့ပြန်မှုပုံစံ မမှန်ကန်ပါ။"
+        return "အဖြေရှာမတွေ့ပါ။ တုံ့ပြန်မှုပုံစံမှားနေပါသည်။"
     
     except requests.exceptions.Timeout:
-        return "⏰ AI ဝန်ဆောင်မှု အချိန်ကုန်သွားပါပြီ။ ကျေးဇူးပြု၍ နောက်မှ ထပ်စမ်းကြည့်ပါ။"
+        return "⏰ AI အချိန်ကုန်သွားပါပြီ။ နောက်မှထပ်စမ်းပါ။"
     except Exception as e:
         print(f"AI Error: {e}")
-        return "🤖 AI ဝန်ဆောင်မှု ယာယီရနိုင်မှု မရှိပါ။ နောက်မှ ထပ်ကြိုးစားကြည့်ပါ။"
+        return f"🤖 AI အမှား: {str(e)}"
 
 def handle_message(chat_id, text):
     """Process user messages - check for show commands or AI questions."""
@@ -119,7 +117,10 @@ def main():
     """Main bot loop - polls for messages."""
     print("🚀 ဘော့စတင်လည်ပတ်နေပါပြီ...")
     print("✅ ရှိုးစာရင်းများ ပါဝင်သည်:", [cmd['command'] for cmd in COMMANDS])
-    print("✅ AI စနစ် အသင့်ရှိပါသည်!" if CLOUDFLARE_API_KEY else "⚠️ AI စနစ် မပါရှိပါ")
+    if CLOUDFLARE_API_KEY and CLOUDFLARE_ACCOUNT_ID:
+        print("✅ AI စနစ် အသင့်ရှိပါသည်!")
+    else:
+        print("⚠️ AI စနစ် မပါရှိပါ - API သော့များ ထည့်သွင်းရန် လိုအပ်သည်")
     
     last_update_id = 0
     
