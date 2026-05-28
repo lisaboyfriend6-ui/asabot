@@ -19,7 +19,7 @@ def save_subscribers(subscribers):
     with open(SUBSCRIBERS_FILE, 'w', encoding='utf-8') as f:
         json.dump(subscribers, f, ensure_ascii=False, indent=4)
 
-YOUR_USER_ID = 5848609177 # CHANGE TO YOUR ID
+YOUR_USER_ID = 5848609177  # CHANGE TO YOUR ID
 
 def send_message(chat_id, text, reply_markup=None):
     url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
@@ -32,46 +32,51 @@ def send_message(chat_id, text, reply_markup=None):
         print(f"Send error: {e}")
 
 def forward_to_admin(chat_id, user_name, user_id, feedback_text):
-    message = f"📝 <b>Feedback</b>\n👤 {user_name}\n🆔 <code>{user_id}</code>\n💬 {feedback_text}"
+    message = f"📝 <b>တုံ့ပြန်ချက်အသစ်</b>\n\n👤 {user_name}\n🆔 <code>{user_id}</code>\n💬 {feedback_text}"
     send_message(YOUR_USER_ID, message)
 
 def handle_message(chat_id, text, user_name, user_id):
     user_text = text.lower().strip()
     
+    # /list command
     if user_text == '/list':
         show_list = "\n".join([f"• {cmd['command']}" for cmd in COMMANDS])
-        send_message(chat_id, f"📺 Shows:\n{show_list}")
+        send_message(chat_id, f"📺 <b>ရရှိနိုင်တဲ့ စီးရီးများ:</b>\n\n{show_list}")
         return True
     
+    # /feedback command
     if user_text.startswith('/feedback'):
         feedback_msg = text.replace('/feedback', '').strip()
         if feedback_msg:
             forward_to_admin(chat_id, user_name, user_id, feedback_msg)
-            send_message(chat_id, "✅ Feedback sent!")
+            send_message(chat_id, "✅ <b>ကျေးဇူးတင်ပါတယ်!</b>\n\nသင့်ရဲ့ တုံ့ပြန်ချက်ကို အက်မင်ထံ ပေးပို့ပြီးပါပြီ။")
         else:
-            send_message(chat_id, "📝 Usage: /feedback your message")
+            send_message(chat_id, "📝 <b>/feedback အသုံးပြုနည်း</b>\n\n<code>/feedback သင့်ရဲ့ တုံ့ပြန်ချက်</code>\n\nဥပမာ: <code>/feedback လင့်ခ်အလုပ်မလုပ်ပါ</code>")
         return True
     
+    # /notify command
     if user_text == '/notify':
-        subs = load_subscribers()
-        if user_id in subs:
-            send_message(chat_id, "🔔 Already subscribed")
+        subscribers = load_subscribers()
+        if user_id in subscribers:
+            send_message(chat_id, "🔔 <b>သင်သည် သတင်းအကြောင်းကြားချက် ရရှိပြီးသားဖြစ်ပါသည်။</b>")
         else:
-            subs.append(user_id)
-            save_subscribers(subs)
-            send_message(chat_id, "🔔 Subscribed!")
+            subscribers.append(user_id)
+            save_subscribers(subscribers)
+            send_message(chat_id, "🔔 <b>သတင်းအကြောင်းကြားချက် စာရင်းသွင်းပြီးပါပြီ။</b>\n\nစီးရီးအသစ်များ ထပ်တိုးတိုင်း အကြောင်းကြားချက် ပို့ပေးပါမည်။")
         return True
     
+    # /unnotify command
     if user_text == '/unnotify':
-        subs = load_subscribers()
-        if user_id in subs:
-            subs.remove(user_id)
-            save_subscribers(subs)
-            send_message(chat_id, "🔕 Unsubscribed")
+        subscribers = load_subscribers()
+        if user_id in subscribers:
+            subscribers.remove(user_id)
+            save_subscribers(subscribers)
+            send_message(chat_id, "🔕 <b>သတင်းအကြောင်းကြားချက် စာရင်းမှ ဖယ်ရှားပြီးပါပြီ။</b>")
         else:
-            send_message(chat_id, "❓ Not subscribed")
+            send_message(chat_id, "❓ <b>သင်သည် သတင်းအကြောင်းကြားချက် စာရင်းတွင် မပါရှိပါ။</b>")
         return True
     
+    # Check for exact match in show names
     for cmd in COMMANDS:
         if user_text == cmd['command'].lower():
             buttons = []
@@ -84,12 +89,12 @@ def handle_message(chat_id, text, user_name, user_id):
             send_message(chat_id, cmd['msg'], reply_markup)
             return True
     
-    # Simple not found - NO "Available shows" line
-    send_message(chat_id, "❓ Not found. Use /list to see all shows.")
+    # No match found
+    send_message(chat_id, "❓ <b>စီးရီးအမည်ကို ရှာမတွေ့ပါ။</b>\n\n<code>/list</code> ကိုရိုက်ထည့်ပြီး ရရှိနိုင်တဲ့ စီးရီးများကို ကြည့်ရှုနိုင်ပါတယ်။")
     return False
 
 def main():
-    print("Bot running...")
+    print("🚀 Bot is running...")
     last_id = 0
     processed = set()
     
@@ -115,8 +120,22 @@ def main():
                     
                     if 'text' in msg:
                         text = msg['text']
+                        
                         if text == '/start':
-                            send_message(chat_id, "🎬 Send a show name or /list")
+                            # BURMESE WELCOME WITH ALL COMMANDS
+                            welcome_msg = (
+                                "🎬 <b>Animation by Asa ဘော့မှ ကြိုဆိုပါတယ်!</b>\n\n"
+                                "📺 <b>အသုံးပြုနိုင်တဲ့ Command များ:</b>\n\n"
+                                "• <code>/list</code> - ရရှိနိုင်တဲ့ စီးရီးအားလုံးကို ကြည့်ရှုရန်\n"
+                                "• <code>/feedback &lt;မက်ဆေ့ချ်&gt;</code> - တုံ့ပြန်ချက် ပေးပို့ရန်\n"
+                                "• <code>/notify</code> - သတင်းအကြောင်းကြားချက် စာရင်းသွင်းရန်\n"
+                                "• <code>/unnotify</code> - သတင်းအကြောင်းကြားချက် စာရင်းမှ ထွက်ရန်\n\n"
+                                "🎬 <b>စီးရီးကြည့်ရှုရန်:</b>\n"
+                                "စီးရီးအမည်ကို တိုက်ရိုက်ရိုက်ထည့်ပါ။\n"
+                                "ဥပမာ: <code>rick and morty</code>\n\n"
+                                "💡 အကူအညီလိုပါက <code>/feedback</code> ဖြင့် ဆက်သွယ်နိုင်ပါတယ်။"
+                            )
+                            send_message(chat_id, welcome_msg)
                         else:
                             handle_message(chat_id, text, user_name, user_id)
             time.sleep(1)
