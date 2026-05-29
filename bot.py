@@ -17,7 +17,7 @@ from telegram.ext import (
 # =====================
 # CONFIG
 # =====================
-BOT_TOKEN = "PUT_NEW_TOKEN_HERE"
+BOT_TOKEN = "8705324629:AAG-tGNDzHbUoCJTKorJKv0B4d7h-tz4D6U"
 ADMIN_ID = 5848609177
 DB_FILE = "bot.db"
 JSON_FILE = "quick_reply.json"
