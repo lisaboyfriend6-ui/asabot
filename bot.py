@@ -1,3 +1,4 @@
+from services.search import smart_search
 import json
 import sqlite3
 import time
