@@ -6,7 +6,9 @@ from collections import defaultdict
 
 TOKEN = os.environ.get('BOT_TOKEN')
 SUBSCRIBERS_FILE = 'subscribers.json'
+OFFSET_FILE = 'offset.txt'
 
+# Load your show commands
 with open('quick_reply.json', 'r', encoding='utf-8') as f:
     COMMANDS = json.load(f)
 
@@ -20,7 +22,23 @@ def save_subscribers(subscribers):
     with open(SUBSCRIBERS_FILE, 'w', encoding='utf-8') as f:
         json.dump(subscribers, f, ensure_ascii=False, indent=4)
 
-YOUR_USER_ID = 5848609177  # CHANGE TO YOUR ID
+def get_last_offset():
+    """Read the last processed update_id from file"""
+    if os.path.exists(OFFSET_FILE):
+        with open(OFFSET_FILE, 'r') as f:
+            try:
+                return int(f.read().strip())
+            except:
+                return 0
+    return 0
+
+def save_offset(offset):
+    """Save the last processed update_id to file"""
+    with open(OFFSET_FILE, 'w') as f:
+        f.write(str(offset))
+
+# CHANGE THIS TO YOUR TELEGRAM USER ID!
+YOUR_USER_ID = 5848609177  # <--- Replace with your actual ID from @userinfobot
 
 # Cooldown tracker to prevent duplicate responses
 last_user_message_time = defaultdict(float)
@@ -55,7 +73,7 @@ def handle_message(chat_id, text, user_name, user_id):
             forward_to_admin(chat_id, user_name, user_id, feedback_msg)
             send_message(chat_id, "✅ <b>ကျေးဇူးတင်ပါတယ်!</b>\n\nသင့်ရဲ့ တုံ့ပြန်ချက်ကို အက်မင်ထံ ပေးပို့ပြီးပါပြီ။")
         else:
-            send_message(chat_id, "📝 <b>/feedback အသုံးပြုနည်း</b>\n\n<code>/feedback သင့်ရဲ့ တုံ့ပြန်ချက်</code>")
+            send_message(chat_id, "📝 <b>/feedback အသုံးပြုနည်း</b>\n\n<code>/feedback သင့်ရဲ့ တုံ့ပြန်ချက်</code>\n\nဥပမာ: <code>/feedback လင့်ခ်အလုပ်မလုပ်ပါ</code>")
         return True
     
     # /notify command
@@ -66,7 +84,7 @@ def handle_message(chat_id, text, user_name, user_id):
         else:
             subscribers.append(user_id)
             save_subscribers(subscribers)
-            send_message(chat_id, "🔔 <b>သတင်းအကြောင်းကြားချက် စာရင်းသွင်းပြီးပါပြီ။</b>")
+            send_message(chat_id, "🔔 <b>သတင်းအကြောင်းကြားချက် စာရင်းသွင်းပြီးပါပြီ။</b>\n\nစီးရီးအသစ်များ ထပ်တိုးတိုင်း အကြောင်းကြားချက် ပို့ပေးပါမည်။")
         return True
     
     # /unnotify command
@@ -99,22 +117,41 @@ def handle_message(chat_id, text, user_name, user_id):
 
 def main():
     print("🚀 Bot is running...")
-    last_id = 0
+    
+    # Get the last processed offset
+    last_offset = get_last_offset()
+    print(f"Starting from offset: {last_offset}")
+    
     processed = set()
     
     while True:
         try:
+            # Use offset to skip old messages
             url = f"https://api.telegram.org/bot{TOKEN}/getUpdates"
-            resp = requests.get(url, params={'timeout': 30, 'offset': last_id + 1}, timeout=35)
+            response = requests.get(
+                url,
+                params={'timeout': 30, 'offset': last_offset + 1},
+                timeout=35
+            )
             
-            for update in resp.json().get('result', []):
-                uid = update['update_id']
-                if uid in processed:
+            data = response.json()
+            
+            for update in data.get('result', []):
+                update_id = update['update_id']
+                
+                # Skip if already processed
+                if update_id in processed:
                     continue
-                processed.add(uid)
+                processed.add(update_id)
+                
+                # Update the offset
+                if update_id >= last_offset:
+                    last_offset = update_id
+                    save_offset(last_offset)
+                
+                # Keep memory manageable
                 if len(processed) > 1000:
                     processed = set(list(processed)[-500:])
-                last_id = uid
                 
                 if 'message' in update:
                     msg = update['message']
@@ -125,11 +162,11 @@ def main():
                     if 'text' in msg:
                         text = msg['text']
                         
-                        # COOLDOWN CHECK - Prevent duplicate processing
+                        # Cooldown check - prevent duplicate processing
                         current_time = time.time()
                         last_time = last_user_message_time.get(f"{chat_id}_{user_id}", 0)
                         if current_time - last_time < 1.5:
-                            continue  # Skip if same user sent message less than 1.5 seconds ago
+                            continue
                         last_user_message_time[f"{chat_id}_{user_id}"] = current_time
                         
                         if text == '/start':
@@ -148,6 +185,7 @@ def main():
                             send_message(chat_id, welcome_msg)
                         else:
                             handle_message(chat_id, text, user_name, user_id)
+            
             time.sleep(1)
         except Exception as e:
             print(f"Error: {e}")
