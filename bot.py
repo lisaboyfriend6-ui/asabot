@@ -22,7 +22,7 @@ from telegram.ext import (
 # IMPORTANT: Use environment variables for security!
 # Set this in your terminal: export BOT_TOKEN="your_token_here"
 # Or use python-dotenv for .env file
-BOT_TOKEN = os.getenv("8705324629:AAG-tGNDzHbUoCJTKorJKv0B4d7h-tz4D6U")  # Replace or use env var
+BOT_TOKEN = os.getenv("BOT_TOKEN")  # Replace or use env var
 ADMIN_ID = 5848609177
 DB_FILE = "bot.db"
 JSON_FILE = "quick_reply.json"
