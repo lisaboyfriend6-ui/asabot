@@ -31,6 +31,20 @@
             ]
         ]
     },
+    {
+        "command": "Spider Noir",
+        "title": "Free",
+        "msg": "Spider Noir ကို အစအဆုံးကြည့်လို့ရပြီဗျာ!",
+        "type": "text",
+        "buttons": [
+            [
+                {
+                    "text": "ရာသီ ၁ ကို ကြည့်ရန်။",
+                    "url": "https://t.me/+I5EDbfT-wqozZjk1"
+                }
+            ]
+        ]
+    },
       {
         "command": "Scooby Doo, Mystery Incorporated",
         "title": "Series Name",
