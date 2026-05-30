@@ -5,6 +5,9 @@ import time
 import difflib
 import logging
 import os
+import asyncio
+import signal
+import sys
 
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
@@ -32,6 +35,9 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
+
+# Global variable for application (for shutdown handler)
+app = None
 
 # =====================
 # LOAD DATA
@@ -180,6 +186,10 @@ def build_buttons(buttons):
 # =====================
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle /start command"""
+    # Check if this is a message
+    if not update.message:
+        return
+    
     user = update.effective_user
     await update.message.reply_text(
         f"🎬 ကြိုဆိုပါတယ် ၊ {user.first_name}!\n\n"
@@ -195,6 +205,9 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle /help command"""
+    if not update.message:
+        return
+    
     await update.message.reply_text(
         "📖 *Available Commands*\n\n"
         "/start - Start the bot\n"
@@ -210,6 +223,9 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def list_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle /list command - show all series"""
+    if not update.message:
+        return
+    
     if not SERIES:
         await update.message.reply_text("❌ No series data available")
         return
@@ -227,6 +243,9 @@ async def list_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def notify_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle /notify command - subscribe user"""
+    if not update.message:
+        return
+    
     user_id = update.effective_user.id
     add_sub(user_id)
     await update.message.reply_text("🔔 You have been subscribed to notifications!")
@@ -234,6 +253,9 @@ async def notify_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def unnotify_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle /unnotify command - unsubscribe user"""
+    if not update.message:
+        return
+    
     user_id = update.effective_user.id
     remove_sub(user_id)
     await update.message.reply_text("🔕 You have been unsubscribed from notifications!")
@@ -244,6 +266,11 @@ async def unnotify_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # =====================
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle regular text messages (search queries)"""
+    
+    # IMPORTANT: Check if this is actually a text message
+    if not update.message or not update.message.text:
+        logger.debug(f"Received update without message text: {update}")
+        return
     
     update_id = update.update_id
     user_id = update.effective_user.id
@@ -303,6 +330,11 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # =====================
 async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle inline keyboard button presses"""
+    
+    # Check if this is actually a callback query
+    if not update.callback_query:
+        return
+        
     query = update.callback_query
     await query.answer()
 
@@ -327,6 +359,9 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # =====================
 async def broadcast_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Admin only: Broadcast message to all subscribers"""
+    if not update.message:
+        return
+    
     user_id = update.effective_user.id
     
     # Check if user is admin
@@ -365,6 +400,9 @@ async def broadcast_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Admin only: Show bot statistics"""
+    if not update.message:
+        return
+    
     user_id = update.effective_user.id
     
     if user_id != ADMIN_ID:
@@ -391,14 +429,33 @@ async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Log errors and notify admin"""
     logger.error(f"Update {update} caused error {context.error}")
     
+    # Don't send error notifications for every small error to avoid spam
+    error_str = str(context.error)
+    
+    # Skip sending notifications for common non-critical errors
+    if "Conflict" in error_str or "telegram.error.Conflict" in error_str:
+        logger.warning("Conflict error detected - this usually means another bot instance is running")
+        return
+    
     # Notify admin about critical errors
     try:
         await context.bot.send_message(
             chat_id=ADMIN_ID,
-            text=f"⚠️ Bot error occurred!\n\n{str(context.error)[:500]}"
+            text=f"⚠️ Bot error occurred!\n\n{error_str[:500]}"
         )
     except:
         pass
+
+
+# =====================
+# SHUTDOWN HANDLER
+# =====================
+def shutdown_handler(signum, frame):
+    """Handle shutdown signals gracefully"""
+    logger.info("Received shutdown signal, stopping bot...")
+    if app and app.running:
+        app.stop()
+    sys.exit(0)
 
 
 # =====================
@@ -406,6 +463,7 @@ async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # =====================
 def main():
     """Main function to start the bot"""
+    global app
     
     # Initialize database
     init_db()
@@ -413,6 +471,12 @@ def main():
     # Verify data loaded
     if not SERIES:
         logger.warning("No series data loaded! Check your JSON file.")
+    
+    # Check if BOT_TOKEN is set
+    if not BOT_TOKEN:
+        logger.error("BOT_TOKEN environment variable is not set!")
+        print("ERROR: BOT_TOKEN is not set. Please add it to Railway variables.")
+        sys.exit(1)
     
     # Create application
     app = ApplicationBuilder().token(BOT_TOKEN).build()
@@ -435,15 +499,26 @@ def main():
     # Add error handler
     app.add_error_handler(error_handler)
     
+    # Setup signal handlers for graceful shutdown
+    signal.signal(signal.SIGINT, shutdown_handler)
+    signal.signal(signal.SIGTERM, shutdown_handler)
+    
     # Start bot
     logger.info("Bot is starting...")
     print("🤖 Bot is running... Press Ctrl+C to stop")
     
-    # Run the bot
-    app.run_polling(allowed_updates=Update.ALL_TYPES)
+    # Run the bot with proper error handling for Railway
+    try:
+        # Use run_polling with drop_pending_updates to avoid conflicts
+        app.run_polling(
+            allowed_updates=Update.ALL_TYPES,
+            drop_pending_updates=True,  # This helps with the conflict error
+            stop_signals=None  # Let Railway handle signals
+        )
+    except Exception as e:
+        logger.error(f"Bot crashed: {e}")
+        raise
 
 
 if __name__ == "__main__":
-    # Import asyncio for broadcast function
-    import asyncio
     main()
