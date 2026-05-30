@@ -143,20 +143,7 @@
             ]
         ]
     },
-    {
-        "command": "Over the garden wall",
-        "title": "Paid",
-        "msg": "Over the garden wall ကို အစအဆုံး ဝယ်ယူကြည့်လို့ရပြီဗျာ!",
-        "type": "text",
-        "buttons": [
-            [
-                {
-                    "text": "ရာသီ ၁ ကို ဝယ်ယူရန်။",
-                    "url": "https://t.me/animationbyasa/997"
-                }
-            ]
-        ]
-    },
+    
     {
         "command": "Adventure time",
         "title": "Paid",
